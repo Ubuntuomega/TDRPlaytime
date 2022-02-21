@@ -46,7 +46,8 @@ public class MysqlDatabase extends Storage {
         String ex = "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "playtime` (\n" +
                 "  `uuid` varchar(36),\n" +
                 "  `name` varchar(16),\n" +
-                "  `time` BIGINT \n" +
+                "  `time` BIGINT, \n" +
+                "   PRIMARY KEY (uuid) \n"+
                 ");\n";
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(ex)) {
@@ -160,10 +161,13 @@ public class MysqlDatabase extends Storage {
     @Override
     public CompletableFuture savePlayTime(String uuid, long playtime) {
         return CompletableFuture.supplyAsync(() -> {
-            try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE `" + tablePrefix + "playtime` SET `uuid`=?,`time`=? WHERE `uuid` = ?")) {
+//            try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE `" + tablePrefix + "playtime` SET `uuid`=?,`time`=? WHERE `uuid` = ?")) {
+              try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO`" + tablePrefix + "playtime`(uuid, name, time) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `time` = ?")) {
+                String name = Bukkit.getOfflinePlayer(UUID.fromString(uuid)).getName();
                 preparedStatement.setString(1, uuid);
-                preparedStatement.setLong(2, playtime);
-                preparedStatement.setString(3, uuid);
+                preparedStatement.setString(2, name);
+                preparedStatement.setLong(3, playtime);
+                preparedStatement.setLong(4, playtime);
                 preparedStatement.execute();
             } catch (SQLException sqlException) {
                 sqlException.printStackTrace();
@@ -171,6 +175,21 @@ public class MysqlDatabase extends Storage {
 
             return this;
         });
+    }
+
+    //Used for onDisable() and migration
+    @Override
+    public void savePlayTimeSync(String uuid, long playtime) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO`" + tablePrefix + "playtime`(uuid, name, time) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `time` = ?")) {
+            String name = Bukkit.getOfflinePlayer(UUID.fromString(uuid)).getName();
+            preparedStatement.setString(1, uuid);
+            preparedStatement.setString(2, name);
+            preparedStatement.setLong(3, playtime);
+            preparedStatement.setLong(4, playtime);
+            preparedStatement.execute();
+        } catch (SQLException sqlException) {
+            sqlException.printStackTrace();
+        }
     }
 
     @SneakyThrows

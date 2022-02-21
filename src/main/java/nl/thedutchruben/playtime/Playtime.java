@@ -24,6 +24,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
@@ -34,10 +35,15 @@ public final class Playtime extends JavaPlugin {
     private static Playtime instance;
     private final Map<UUID, Long> playerOnlineTime = new HashMap<>();
     private final Map<UUID, Long> lastCheckedTime = new HashMap<>();
+
+    private int savePlayerTimeInterval;
+
     private Map<Long, Milestone> milestoneMap = new HashMap<>();
     private List<RepeatingMilestone> repeatedMilestoneList = new ArrayList<>();
+
     private Map<String, String> keyMessageMap = new HashMap<>();
     private Storage storage;
+
     private final FileManager fileManager = new FileManager(this);
     private FileManager.Config langFile;
     private BukkitTask checkTask;
@@ -51,7 +57,7 @@ public final class Playtime extends JavaPlugin {
     public void onEnable() {
         // Plugin startup logic
         instance = this;
-        Metrics metrics = new Metrics(this, 9404);
+        //Metrics metrics = new Metrics(this, 9404);
 
         FileManager.Config config = fileManager.getConfig("config.yml");
         FileConfiguration configfileConfiguration = config.get();
@@ -62,6 +68,7 @@ public final class Playtime extends JavaPlugin {
         configfileConfiguration.addDefault("language", "en_GB");
         configfileConfiguration.addDefault("settings.update_check", true);
         configfileConfiguration.addDefault("settings.update_checktime", 0.5);
+        configfileConfiguration.addDefault("settings.save_playertime_interval", 5); //On seconds
         config.copyDefaults(true).save();
 
         FileManager.Config database = fileManager.getConfig("database.yml");
@@ -86,8 +93,11 @@ public final class Playtime extends JavaPlugin {
         config.save();
         database.save();
         boolean data = storage.setup();
+
         if(data){
             new Mccore(this);
+
+            //-- Register commands
             getCommand("playtime").setExecutor(new PlayTimeCommand());
             getCommand("playtime").setTabCompleter(new PlayTimeCommand());
             getCommand("milestone").setExecutor(new MilestoneCommand());
@@ -95,12 +105,14 @@ public final class Playtime extends JavaPlugin {
             getCommand("repeatingmilestone").setExecutor(new RepeatingMilestoneCommand());
             getCommand("repeatingmilestone").setTabCompleter(new RepeatingMilestoneCommand());
 
+            //-- Generate langs
             generateEnglishTranslations();
             generateDutchTranslations();
             generateGermanTranslations();
 
             langFile = fileManager.getConfig("lang/" + configfileConfiguration.getString("language") + ".yml");
 
+            //-- Load Milestones
             getLogger().log(Level.INFO, "Loading milestones");
             storage.getMilestones().whenComplete((milestones, throwable) -> {
                 for (Milestone storageMilestone : milestones) {
@@ -109,6 +121,7 @@ public final class Playtime extends JavaPlugin {
                 getLogger().log(Level.INFO, milestoneMap.size() + " milestones loaded");
             });
 
+            //-- Load repeating Milestones
             getLogger().log(Level.INFO, "Loading repeating milestones");
 
             storage.getRepeatingMilestones().whenComplete((repeatingMilestones, throwable) -> {
@@ -118,6 +131,7 @@ public final class Playtime extends JavaPlugin {
                 getLogger().log(Level.INFO, repeatedMilestoneList.size() + " repeating milestones loaded");
             });
 
+            //-- Update Checker notification
             if (configfileConfiguration.getBoolean("settings.update_check", true)) {
                 UpdateChecker.init(this, "https://thedutchruben.nl/api/projects/version/tdrplaytime") // A link to a URL that contains the latest version as String
                         .setDownloadLink("https://www.spigotmc.org/resources/tdrplaytime-milestones-mysql.47894/") // You can either use a custom URL or the Spigot Resource ID
@@ -132,57 +146,44 @@ public final class Playtime extends JavaPlugin {
             }
 
 
-            for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
-                long onlineTime = 0;
-                try {
-                    onlineTime = Playtime.getInstance().getStorage().getPlayTimeByUUID(onlinePlayer.getUniqueId().toString()).get();
-                } catch (InterruptedException | ExecutionException e) {
-                    e.printStackTrace();
-                }
-                Playtime.getInstance().getPlayerOnlineTime().put(onlinePlayer.getUniqueId(), onlineTime);
-                Playtime.getInstance().getLastCheckedTime().put(onlinePlayer.getUniqueId(), System.currentTimeMillis());
-            }
+            savePlayerTimeInterval = configfileConfiguration.getInt("settings.save_playertime_interval") * 20;
 
-            checkTask = Bukkit.getScheduler().runTaskTimerAsynchronously(getInstance(), () -> {
-                Bukkit.getPluginManager().callEvent(new PlayTimeCheckEvent(true));
-                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
-                    update(onlinePlayer.getUniqueId(), true);
-                }
-            }, 0, 20);
+            //-- Time updater repeating task
+            startCheckTimeTask();
 
-
+            //-- 3º party plugins integration
             if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
                 getLogger().log(Level.INFO, "PlaceholderAPI expansion implemented");
-                metrics.addCustomChart(new SimplePie("addons_use", () -> "PlaceholderAPI"));
+                //metrics.addCustomChart(new SimplePie("addons_use", () -> "PlaceholderAPI"));
                 new PlaceholderAPIExpansion().register();
             }
 
             if (Bukkit.getPluginManager().getPlugin("Multiverse-Core") != null) {
-                metrics.addCustomChart(new SimplePie("addons_use", () -> "Multiverse-Core"));
+                //metrics.addCustomChart(new SimplePie("addons_use", () -> "Multiverse-Core"));
             }
 
             if (Bukkit.getPluginManager().getPlugin("MultiWorld") != null) {
-                metrics.addCustomChart(new SimplePie("addons_use", () -> "MultiWorld"));
+                //metrics.addCustomChart(new SimplePie("addons_use", () -> "MultiWorld"));
             }
 
             if (Bukkit.getPluginManager().getPlugin("mcMMO") != null) {
-                metrics.addCustomChart(new SimplePie("addons_use", () -> "mcMMO"));
+                //metrics.addCustomChart(new SimplePie("addons_use", () -> "mcMMO"));
             }
 
             if (Bukkit.getPluginManager().getPlugin("HolographicDisplay") != null) {
-                metrics.addCustomChart(new SimplePie("addons_use", () -> "HolographicDisplay"));
+                //metrics.addCustomChart(new SimplePie("addons_use", () -> "HolographicDisplay"));
             }
 
-
-            metrics.addCustomChart(new SimplePie("bungeecord", () -> String.valueOf(getServer().spigot().getConfig().getBoolean("settings.bungeecord"))));
-            metrics.addCustomChart(new SimplePie("database_type", () -> storage.getName()));
-            metrics.addCustomChart(new SimplePie("update_checker", () -> String.valueOf(configfileConfiguration.getBoolean("settings.update_check", true))));
-            metrics.addCustomChart(new SimplePie("uses_milestones", () -> String.valueOf(milestoneMap.size() > 1)));
-            metrics.addCustomChart(new SimplePie("uses_repeating_milestones", () -> String.valueOf(repeatedMilestoneList.size() > 1)));
-
-            metrics.addCustomChart(new SimplePie("language", () -> config.get().getString("language")));
-            metrics.addCustomChart(new SingleLineChart("total_play_time", () -> Math.toIntExact(storage.getTotalPlayTime() / 1000 / 60 / 60)));
-            metrics.addCustomChart(new SingleLineChart("total_players", () -> Math.toIntExact(storage.getTotalPlayers())));
+            //-- Metrics
+//            metrics.addCustomChart(new SimplePie("bungeecord", () -> String.valueOf(getServer().spigot().getConfig().getBoolean("settings.bungeecord"))));
+//            metrics.addCustomChart(new SimplePie("database_type", () -> storage.getName()));
+//            metrics.addCustomChart(new SimplePie("update_checker", () -> String.valueOf(configfileConfiguration.getBoolean("settings.update_check", true))));
+//            metrics.addCustomChart(new SimplePie("uses_milestones", () -> String.valueOf(milestoneMap.size() > 1)));
+//            metrics.addCustomChart(new SimplePie("uses_repeating_milestones", () -> String.valueOf(repeatedMilestoneList.size() > 1)));
+//
+//            metrics.addCustomChart(new SimplePie("language", () -> config.get().getString("language")));
+//            metrics.addCustomChart(new SingleLineChart("total_play_time", () -> Math.toIntExact(storage.getTotalPlayTime() / 1000 / 60 / 60)));
+//            metrics.addCustomChart(new SingleLineChart("total_players", () -> Math.toIntExact(storage.getTotalPlayers())));
 
         }
     }
@@ -196,12 +197,15 @@ public final class Playtime extends JavaPlugin {
                 forceSave(onlinePlayer.getUniqueId());
             }
 
-            storage.stop();
             playerOnlineTime.clear();
             lastCheckedTime.clear();
             milestoneMap.clear();
             repeatedMilestoneList.clear();
             keyMessageMap.clear();
+            storage.stop();
+
+        } else {
+            storage.stop();
         }
 
     }
@@ -232,7 +236,7 @@ public final class Playtime extends JavaPlugin {
         long newtime = playerOnlineTime.get(uuid) + extraTime;
         checkMileStones(uuid, playerOnlineTime.get(uuid), newtime);
         playerOnlineTime.replace(uuid, newtime);
-        storage.savePlayTime(uuid.toString(), playerOnlineTime.get(uuid));
+        storage.savePlayTimeSync(uuid.toString(), playerOnlineTime.get(uuid));
 
     }
 
@@ -252,6 +256,53 @@ public final class Playtime extends JavaPlugin {
         }
     }
 
+    public void startCheckTimeTask(){
+        if (checkTask != null){
+            if (!checkTask.isCancelled()){
+                checkTask.cancel();
+            }
+        }
+
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            long onlineTime = 0;
+            try {
+                onlineTime = Playtime.getInstance().getStorage().getPlayTimeByUUID(onlinePlayer.getUniqueId().toString()).get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+            Playtime.getInstance().getPlayerOnlineTime().put(onlinePlayer.getUniqueId(), onlineTime);
+            Playtime.getInstance().getLastCheckedTime().put(onlinePlayer.getUniqueId(), System.currentTimeMillis());
+        }
+
+        checkTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                Bukkit.getPluginManager().callEvent(new PlayTimeCheckEvent(true));
+                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                    update(onlinePlayer.getUniqueId(), true);
+                }
+            }
+
+            @Override
+            public synchronized void cancel() throws IllegalStateException {
+                super.cancel();
+//                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+//                    update(onlinePlayer.getUniqueId(), true);
+//                }
+            }
+        }.runTaskTimerAsynchronously(getInstance(),0,savePlayerTimeInterval);
+
+    }
+
+    public void stopCheckTimeTask(){
+        if (checkTask != null){
+            if (!checkTask.isCancelled()){
+                checkTask.cancel();
+            }
+        }
+    }
+
+    //Getters
     public String getMessage(String key) {
         if (keyMessageMap.containsKey(key)) {
             return keyMessageMap.get(key);
@@ -287,7 +338,11 @@ public final class Playtime extends JavaPlugin {
         return milestoneMap;
     }
 
+    public Map<String, String> getKeyMessageMap() {
+        return keyMessageMap;
+    }
 
+    //Lang-relationated methods
     public void generateEnglishTranslations() {
         FileManager.Config config = fileManager.getConfig("lang/en_GB.yml");
         if (!config.get().contains("version")) {
@@ -419,6 +474,7 @@ public final class Playtime extends JavaPlugin {
         }
     }
 
+    //Milestone-relationated methods
     public void setMilestoneMap(Map<Long, Milestone> milestoneMap) {
         this.milestoneMap = milestoneMap;
     }
@@ -427,8 +483,5 @@ public final class Playtime extends JavaPlugin {
         this.repeatedMilestoneList = repeatedMilestoneList;
     }
 
-    public Map<String, String> getKeyMessageMap() {
-        return keyMessageMap;
-    }
 }
 

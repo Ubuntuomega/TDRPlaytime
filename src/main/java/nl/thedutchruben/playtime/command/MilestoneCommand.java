@@ -34,6 +34,7 @@ public class MilestoneCommand implements CommandExecutor, TabCompleter {
             sendHelp(sender);
         } else {
             switch (args[0].toLowerCase(Locale.ROOT)) {
+
                 case "create":
                     if (args.length == 3) {
                         try {
@@ -45,6 +46,7 @@ public class MilestoneCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(Playtime.getInstance().getMessage("command.milestone.createusage"));
                     }
                     break;
+
                 case "additem":
                     if (args[1] != null) {
                         Optional<Milestone> milestoneOptional = Playtime.getInstance().getMilestoneMap().values().stream().filter(milestone -> milestone.getMilestoneName().equalsIgnoreCase(args[1].replace("_", " "))).findFirst();
@@ -86,6 +88,7 @@ public class MilestoneCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(Playtime.getInstance().getMessage("command.milestone.addcommandusage"));
                     }
                     break;
+
                 case "togglefirework":
                     if (args[1] != null) {
                         Optional<Milestone> milestoneOptional = Playtime.getInstance().getMilestoneMap().values().stream().filter(milestone -> milestone.getMilestoneName().equalsIgnoreCase(args[1].replace("_", " "))).findFirst();
@@ -105,6 +108,7 @@ public class MilestoneCommand implements CommandExecutor, TabCompleter {
 
                     }
                     break;
+
                 case "setfireworkamount":
                     if (args[1] != null && args[2] != null && isNumeric(args[2])) {
                         Optional<Milestone> milestoneOptional = Playtime.getInstance().getMilestoneMap().values().stream().filter(milestone -> milestone.getMilestoneName().equalsIgnoreCase(args[1].replace("_", " "))).findFirst();
@@ -124,6 +128,7 @@ public class MilestoneCommand implements CommandExecutor, TabCompleter {
 
                     }
                     break;
+
                 case "setfireworkdelay":
                     if (args[1] != null && args[2] != null && isNumeric(args[2])) {
                         Optional<Milestone> milestoneOptional = Playtime.getInstance().getMilestoneMap().values().stream().filter(milestone -> milestone.getMilestoneName().equalsIgnoreCase(args[1].replace("_", " "))).findFirst();

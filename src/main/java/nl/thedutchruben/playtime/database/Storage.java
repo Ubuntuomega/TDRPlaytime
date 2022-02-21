@@ -40,9 +40,13 @@ public abstract class Storage {
      */
     public abstract CompletableFuture<Void> savePlayTime(String uuid, long playtime);
 
+
     public CompletableFuture<Void> savePlayTime(UUID uuid, long playtime){
         return savePlayTime(uuid.toString(),playtime);
     }
+
+    public abstract void savePlayTimeSync(String uuid, long playtime);
+
 
     public abstract CompletableFuture<Map<String, Long>> getTopTenList();
 

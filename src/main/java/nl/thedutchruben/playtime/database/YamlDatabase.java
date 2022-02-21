@@ -53,6 +53,12 @@ public class YamlDatabase extends Storage {
     }
 
     @Override
+    public void savePlayTimeSync(String uuid, long playtime) {
+        Playtime.getInstance().getFileManager().getConfig("players/" + uuid + ".yaml").get().set("onlinetime", playtime);
+        Playtime.getInstance().getFileManager().getConfig("players/" + uuid + ".yaml").save();
+    }
+
+    @Override
     public CompletableFuture<Map<String, Long>> getTopTenList() {
         return CompletableFuture.supplyAsync(() -> {
             Map<String, Long> hashMap = new HashMap<>();

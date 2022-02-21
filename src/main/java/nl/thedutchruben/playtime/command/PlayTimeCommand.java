@@ -36,6 +36,7 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Playtime.getInstance().getMessage("only.player.command"));
             return false;
         }
+
         if (args.length == 0) {
             Playtime.getInstance().update(((Player) sender).getUniqueId(), true);
             sender.sendMessage(translateMessage(Playtime.getInstance().getMessage("command.playtime.timemessage"), Playtime.getInstance().getPlayerOnlineTime().get(((Player) sender).getUniqueId())));
@@ -50,6 +51,7 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
 
                     }
                     break;
+
                 case "reset":
                     if (sender.hasPermission("playtime.playtime.reset")) {
                         if (args.length == 2) {
@@ -64,15 +66,31 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
                         }
                     }
                     break;
+
                 case "migratefromminecraft":
                     if (sender.hasPermission("playtime.playtime.migratefromminecraft")) {
-                        for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
-                            long playtime = (long) offlinePlayer.getStatistic(Statistic.PLAY_ONE_MINUTE) * 60 * 60 * 1000;
-                            Playtime.getInstance().getStorage().savePlayTime(offlinePlayer.getUniqueId().toString(), playtime);
-                        }
-                        sender.sendMessage(ChatColor.GREEN + "migrated");
+                        Playtime playtime = Playtime.getInstance();
+                        playtime.stopCheckTimeTask();
+
+                        sender.sendMessage("Migrating players... This might take several minutes");
+                        Bukkit.getScheduler().runTaskAsynchronously(playtime, () -> {
+                            long playersMigrated = 0;
+
+                            for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
+                                long playtime2 = (long) offlinePlayer.getStatistic(Statistic.PLAY_ONE_MINUTE)/20*1000;
+                                Playtime.getInstance().getStorage().savePlayTimeSync(offlinePlayer.getUniqueId().toString(), playtime2);
+                                ++playersMigrated;
+                            }
+
+                            sender.sendMessage(ChatColor.GREEN + ""+playersMigrated+ " player(s) migrated");
+
+                            playtime.startCheckTimeTask();
+                        });
+
+
                     }
                     break;
+
                 case "settime":
                     if (sender.hasPermission("playtime.playtime.settime")) {
                         if (args.length == 3) {
@@ -83,6 +101,7 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
 
                     }
                     break;
+
                 case "reload":
                     if (sender.hasPermission("playtime.playtime.reload")) {
                         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
@@ -112,6 +131,7 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(ChatColor.GREEN + "Reloaded");
                     }
                     break;
+
                 default:
                     if (sender.hasPermission("playtime.playtime.other")) {
                         if (args[0].length() <= 16) {
