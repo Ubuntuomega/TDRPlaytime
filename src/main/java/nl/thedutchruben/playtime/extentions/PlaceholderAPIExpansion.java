@@ -40,41 +40,10 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
         time = time - minutes * 60L;
         int seconds = (int) time;
 
-        //%tdrplaytime_time%
-        if (params.equals("time")) {
-            return translateMessage(Playtime.getInstance().getMessage("command.playtime.timemessage"), (Playtime.getInstance().getPlayerOnlineTime().get(p.getUniqueId())));
-        }
-
-
-        //%tdrplaytime_days_number%
-        if (params.equals("days_number")) {
-            return String.valueOf(days);
-        }
-
-        //%tdrplaytime_hour_number%
-        if (params.equals("hour_number")) {
-            return String.valueOf(hours);
-        }
-
-        //%tdrplaytime_total_hour_number%
-        if (params.equals("total_hour_number")) {
-            return String.valueOf(hours + days * 24);
-        }
-
-        //%tdrplaytime_minutes_number%
-        if (params.equals("minutes_number")) {
-            return String.valueOf(minutes);
-        }
-
-        //%tdrplaytime_minutes_number%
-        if (params.equals("seconds_number")) {
-            return String.valueOf(seconds);
-        }
-
-        //%tdrplaytime_top_names_{1-10}%
         if (params.contains("top_names_")) {
             int placeNumber = 1;
             String place =params.split("_")[params.split("_").length -1];
+
             try {
                 placeNumber = Integer.parseInt(place);
                 if(placeNumber <= 1){
@@ -88,6 +57,35 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
                 Bukkit.getLogger().log(Level.WARNING,"Wrong number format");
             }
             return Playtime.getInstance().getStorage().getTopPlace(placeNumber - 1);
+
+        } else {
+
+            switch (params){
+                //%tdrplaytime_time%
+                case "time":
+                    return translateMessage(Playtime.getInstance().getMessage("command.playtime.timemessage"), (Playtime.getInstance().getPlayerOnlineTime().get(p.getUniqueId())));
+
+                //%tdrplaytime_days_number%
+                case "days_number":
+                    return String.valueOf(days);
+
+                //%tdrplaytime_hour_number%
+                case "hour_number":
+                    return String.valueOf(hours);
+
+                //%tdrplaytime_total_hour_number%
+                case "total_hour_number":
+                    return String.valueOf(hours + days * 24);
+
+                //%tdrplaytime_minutes_number%
+                case "minutes_number":
+                    return String.valueOf(minutes);
+
+                //%tdrplaytime_seconds_number%
+                case "seconds_number":
+                    return String.valueOf(seconds);
+
+            }
         }
 
         return null;
