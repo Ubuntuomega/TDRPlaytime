@@ -2,6 +2,7 @@ name: TDRPlaytime
 version: ${project.version}
 main: nl.thedutchruben.playtime.Playtime
 authors: [ TheDutchRuben ]
+api-version: 1.18
 softdepend:
   - PlaceholderApi
 description: Playtime plugin with milestone support
@@ -28,7 +29,7 @@ commands:
     permission: playtime.repeatingmilestone
 permissions:
   playtime.playtime:
-    default: true
+    default: false
   playtime.playtime.other:
     default: op
   playtime.playtime.reset:

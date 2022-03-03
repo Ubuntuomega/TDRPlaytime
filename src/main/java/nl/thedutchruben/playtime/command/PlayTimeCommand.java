@@ -3,16 +3,15 @@ package nl.thedutchruben.playtime.command;
 import lombok.SneakyThrows;
 import nl.thedutchruben.playtime.Playtime;
 import nl.thedutchruben.playtime.milestone.Milestone;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Statistic;
+import org.bukkit.*;
+import org.bukkit.advancement.Advancement;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -133,13 +132,19 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
                     break;
 
                 default:
+
+
                     if (sender.hasPermission("playtime.playtime.other")) {
+                        //Si es un username
                         if (args[0].length() <= 16) {
+
+                            //Si el jugador no está conectado
                             if (Bukkit.getPlayer(args[0]) == null) {
+                                String playerName = args[0];
 
                                 sender.sendMessage(translateMessage(Playtime.getInstance().getMessage("command.playtime.usertimemessage").replaceAll(
-                                                "%NAME%", Bukkit.getOfflinePlayer(args[0]).getName())
-                                        , Playtime.getInstance().getStorage().getPlayTimeByName(args[0]).get()));
+                                                "%NAME%", playerName)
+                                        , Playtime.getInstance().getStorage().getPlayTimeByName(playerName).get()));
 
                             } else {
                                 Playtime.getInstance().update(Bukkit.getPlayer(args[0]).getUniqueId(), true);
@@ -147,9 +152,15 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
                             }
                         } else {
                             if (Bukkit.getPlayer(UUID.fromString(args[0])) == null) {
-                                sender.sendMessage(translateMessage(Playtime.getInstance().getMessage("command.playtime.usertimemessage").replaceAll(
-                                                "%NAME%", Bukkit.getOfflinePlayer(UUID.fromString(args[0])).getName())
-                                        , Playtime.getInstance().getStorage().getPlayTimeByUUID(args[0]).get()));
+                                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(UUID.fromString(args[0]));
+
+                                if (offlinePlayer.getName() != null){
+                                    sender.sendMessage(translateMessage(Playtime.getInstance().getMessage("command.playtime.usertimemessage").replaceAll(
+                                                    "%NAME%", offlinePlayer.getName())
+                                            , Playtime.getInstance().getStorage().getPlayTimeByUUID(args[0]).get()));
+                                } else {
+                                    sender.sendMessage("No se ha encontrado ningún jugador registrado con la UUID "+args[0]);
+                                }
 
                             } else {
                                 Playtime.getInstance().update(UUID.fromString(args[0]), true);
@@ -192,6 +203,7 @@ public class PlayTimeCommand implements CommandExecutor, TabCompleter {
         int minutes = (int) (time / 60);
         time = time - minutes * 60L;
         int seconds = (int) time;
+
         return ChatColor.translateAlternateColorCodes('&', message.replace("%H%", String.valueOf(hours)).replace("%M%", String.valueOf(minutes)).replace("%S%", String.valueOf(seconds)).replace("%D%", String.valueOf(days)));
     }
 
