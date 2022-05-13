@@ -86,7 +86,8 @@ public class MysqlConnectionPool
                     dbUrl, dbUser, dbPasswd);
 
         }catch (Exception exception){
-            Bukkit.getLogger().log(Level.WARNING,"Sql not connected plugin shutting down");
+            Bukkit.getLogger().log(Level.SEVERE,"Couldn't connect to SQL database. Shutting down plugins...");
+            exception.printStackTrace();
             Playtime.getInstance().getServer().getPluginManager().disablePlugin(Playtime.getInstance());
         }
 

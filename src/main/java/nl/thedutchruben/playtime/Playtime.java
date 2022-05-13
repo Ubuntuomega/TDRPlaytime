@@ -191,8 +191,10 @@ public final class Playtime extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        Bukkit.getLogger().info("Shutting down TDRPlaytime...");
         if(checkTask != null){
             checkTask.cancel();
+            Bukkit.getLogger().info("Saving all playtimes...");
             for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
                 forceSave(onlinePlayer.getUniqueId());
             }
@@ -202,11 +204,11 @@ public final class Playtime extends JavaPlugin {
             milestoneMap.clear();
             repeatedMilestoneList.clear();
             keyMessageMap.clear();
-            storage.stop();
+            //storage.stop();
 
-        } else {
-            storage.stop();
         }
+        Bukkit.getLogger().info("Stopping storage...");
+        storage.stop();
 
     }
 
