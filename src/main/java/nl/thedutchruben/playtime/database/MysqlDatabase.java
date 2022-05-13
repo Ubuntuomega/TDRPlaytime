@@ -155,7 +155,7 @@ public class MysqlDatabase extends Storage {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-
+            connectionPool.close(connection);
         }
 
     }
